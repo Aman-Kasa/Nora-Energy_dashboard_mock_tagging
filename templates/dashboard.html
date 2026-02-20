@@ -2,7 +2,8 @@
 <html>
 <head>
   <meta charset="utf-8">
-  <title>Nora Energy Dashboard</title>
+  <title>Nora Energy Management System</title>
+  <link rel="icon" type="image/jpeg" href="{{ url_for('static', filename='Nora-LoGo.jpeg') }}">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
@@ -10,54 +11,71 @@
 <body>
   <div class="container">
     <header class="header">
-      <div>
-        <h1>Nora Energy Dashboard</h1>
-        <div class="sub">{{ tz_note }}</div>
+      <div class="header-content">
+        <div class="logo">
+          <img src="{{ url_for('static', filename='Nora-LoGo.jpeg') }}" alt="Nora Energy Logo">
+        </div>
+        <div>
+          <h1>Nora Energy Management</h1>
+          <div class="sub">
+            <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16">
+              <path d="M8 3.5a.5.5 0 0 0-1 0V9a.5.5 0 0 0 .252.434l3.5 2a.5.5 0 0 0 .496-.868L8 8.71V3.5z"/>
+              <path d="M8 16A8 8 0 1 0 8 0a8 8 0 0 0 0 16zm7-8A7 7 0 1 1 1 8a7 7 0 0 1 14 0z"/>
+            </svg>
+            {{ tz_note }}
+          </div>
+        </div>
       </div>
-      <div class="pill">v1 mock (tagging split)</div>
+      <div class="pill">
+        <img src="{{ url_for('static', filename='Nora-LoGo.jpeg') }}" alt="Nora" style="width: 20px; height: 20px; border-radius: 4px; margin-right: 0.5rem; vertical-align: middle;">
+        Professional Edition
+      </div>
     </header>
 
     <section class="panel">
-      <h2>Filter</h2>
+      <h2>📅 Time Range Configuration</h2>
       <form method="get" action="/dashboard" class="filter">
         <label>Date
           <input name="day" value="{{ day }}" placeholder="YYYY-MM-DD">
         </label>
-        <label>Start
+        <label>Start Time
           <input name="start" value="{{ start }}" placeholder="YYYY-MM-DD HH:MM:SS">
         </label>
-        <label>End
+        <label>End Time
           <input name="end" value="{{ end }}" placeholder="YYYY-MM-DD HH:MM:SS">
         </label>
         <button type="submit">Run</button>
       </form>
       <div class="note">
-        Tariff: <b>{{ tariff }}</b> RWF/kWh • Tagging thresholds: GEN {{ thresholds.gen }} kWh, UTIL {{ thresholds.util }} kWh
+        ⚡ Current Tariff: <b>{{ tariff }} RWF/kWh</b> • Tagging Thresholds: Generator {{ thresholds.gen }} kWh • Utility {{ thresholds.util }} kWh
       </div>
     </section>
 
     <section class="grid">
       <div class="card">
-        <h3>Utility (ID 10)</h3>
+        <h3>⚡ Utility Grid Power</h3>
         {% if util_info %}
           <div class="big">{{ "%.3f"|format(util_info.used_kwh) }} <span class="unit">kWh</span></div>
-          <div class="muted">Cost: <b>{{ "%.0f"|format(util_cost) }}</b> RWF</div>
+          <div class="muted">Total Cost: <b>{{ "%.0f"|format(util_cost) }} RWF</b></div>
+          <div class="muted" style="margin-top: 0.5rem;">Meter ID: <b>10</b></div>
         {% else %}
-          <div class="big">—</div><div class="muted">No data</div>
+          <div class="big">—</div><div class="muted">No data available</div>
         {% endif %}
       </div>
 
       <div class="card">
-        <h3>Generator (ID 21)</h3>
+        <h3>🔋 Generator Backup</h3>
         {% if gen_info %}
           <div class="big">{{ "%.3f"|format(gen_info.used_kwh) }} <span class="unit">kWh</span></div>
+          <div class="muted">Backup Power Supply</div>
+          <div class="muted" style="margin-top: 0.5rem;">Meter ID: <b>21</b></div>
         {% else %}
-          <div class="big">—</div><div class="muted">No data</div>
+          <div class="big">—</div><div class="muted">No data available</div>
         {% endif %}
       </div>
 
       <div class="card">
-        <h3>Tenants (Split by Tag)</h3>
+        <h3>🏢 Tenant Consumption Analysis</h3>
         {% for t in tenants %}
           <div class="row">
             <div class="muted">{{ t.name }} (ID {{ t.id }})</div>
@@ -72,46 +90,62 @@
 
           {% if t.split %}
             <div class="splitbox">
-              <div>Utility: <b>{{ "%.3f"|format(t.split.utility_kwh) }}</b> kWh</div>
-              <div>Generator: <b>{{ "%.3f"|format(t.split.generator_kwh) }}</b> kWh</div>
+              <div>
+                <span>⚡ Utility Source</span>
+                <b>{{ "%.3f"|format(t.split.utility_kwh) }} kWh</b>
+              </div>
+              <div>
+                <span>🔋 Generator Source</span>
+                <b>{{ "%.3f"|format(t.split.generator_kwh) }} kWh</b>
+              </div>
               {% if t.split.unknown_kwh > 0 %}
-                <div>Unknown: <b>{{ "%.3f"|format(t.split.unknown_kwh) }}</b> kWh</div>
+                <div>
+                  <span>❓ Unknown Source</span>
+                  <b>{{ "%.3f"|format(t.split.unknown_kwh) }} kWh</b>
+                </div>
               {% endif %}
             </div>
           {% endif %}
         {% endfor %}
-        <div class="note">Rule: if generator meter increases in an interval ⇒ tag tenant delta as GENERATOR, else UTILITY.</div>
+        <div class="note">📊 Smart Tagging: Generator meter activity → Generator source • Otherwise → Utility source</div>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Utility Credit Tracker (from first top-up)</h2>
+      <h2>💳 Utility Credit Management</h2>
       {% if credit %}
         <div class="grid2">
           <div class="card">
-            <h3>Top-ups</h3>
+            <h3>💰 Total Top-ups</h3>
             <div class="big">{{ "%.0f"|format(credit.total_topups) }} <span class="unit">RWF</span></div>
             <div class="muted">First top-up: {{ credit.first_topup_ts }}</div>
           </div>
           <div class="card">
-            <h3>Spend</h3>
+            <h3>💸 Total Expenditure</h3>
             <div class="big">{{ "%.0f"|format(credit.total_spend) }} <span class="unit">RWF</span></div>
+            <div class="muted">Cumulative utility costs</div>
           </div>
           <div class="card">
-            <h3>Balance left</h3>
+            <h3>💵 Available Balance</h3>
             <div class="big">{{ "%.0f"|format(credit.balance_left) }} <span class="unit">RWF</span></div>
             {% if credit.days_left %}
-              <div class="muted">Forecast: <b>{{ "%.1f"|format(credit.days_left) }}</b> days left</div>
+              <div class="muted">Forecast: <b>{{ "%.1f"|format(credit.days_left) }}</b> days remaining</div>
             {% else %}
-              <div class="muted">Forecast: —</div>
+              <div class="muted">Forecast: Insufficient data</div>
             {% endif %}
           </div>
         </div>
 
         <div class="panel inner">
-          <h3>Recent daily utility summary</h3>
+          <h3>📈 Daily Utility Consumption History</h3>
           <table>
-            <thead><tr><th>Date</th><th>Utility kWh</th><th>Cost (RWF)</th></tr></thead>
+            <thead>
+              <tr>
+                <th>Date</th>
+                <th>Consumption (kWh)</th>
+                <th>Cost (RWF)</th>
+              </tr>
+            </thead>
             <tbody>
               {% for r in recent_daily %}
                 <tr>
@@ -124,28 +158,40 @@
           </table>
         </div>
       {% else %}
-        <div class="note">No top-ups recorded yet. Add the first top-up below.</div>
+        <div class="note">💡 No top-up records found. Add your first top-up below to start tracking.</div>
       {% endif %}
 
       <div class="panel inner">
-        <h3>Add top-up</h3>
+        <h3>➕ Add New Top-up</h3>
         <form method="post" action="/topup" class="filter">
-          <label>Timestamp (optional)<input name="ts" placeholder="YYYY-MM-DD HH:MM:SS"></label>
-          <label>Amount (RWF)<input name="amount_rwf" placeholder="e.g. 300000"></label>
-          <label>Note<input name="note" placeholder="EUCL top-up"></label>
-          <button type="submit">Add</button>
+          <label>Timestamp (Optional)
+            <input name="ts" placeholder="YYYY-MM-DD HH:MM:SS">
+          </label>
+          <label>Amount (RWF)
+            <input name="amount_rwf" placeholder="e.g. 300000" required>
+          </label>
+          <label>Note
+            <input name="note" placeholder="EUCL top-up">
+          </label>
+          <button type="submit">Add Top-up</button>
         </form>
       </div>
     </section>
 
     <section class="panel">
-      <h2>Chart (last 10 days)</h2>
-      <div class="note">If your PC is offline, chart may not load (Chart.js CDN). Tables still work.</div>
-      <canvas id="dailyChart" height="120"></canvas>
+      <h2>📊 Energy Consumption Analytics</h2>
+      <div class="note">📉 10-Day Trend Analysis • Real-time Data Visualization • Multi-source Comparison</div>
+      <div class="chart-container">
+        <canvas id="dailyChart"></canvas>
+      </div>
     </section>
 
     <footer class="footer">
-      <div>Mock dashboard with tagging-based split (utility vs generator) for tenants.</div>
+      <div style="display: flex; align-items: center; justify-content: center; gap: 1rem; margin-bottom: 1rem;">
+        <img src="{{ url_for('static', filename='Nora-LoGo.jpeg') }}" alt="Nora Energy Logo" style="width: 40px; height: 40px; border-radius: 8px;">
+        <span style="font-weight: 600; color: var(--text-secondary);">Nora Energy Management System</span>
+      </div>
+      <div>© 2026 Nora Energy Management System • Enterprise Dashboard v2.0 • Powered by Advanced Analytics & Smart Tagging</div>
     </footer>
   </div>
 
@@ -153,20 +199,161 @@
     const data = {{ chart_json | tojson }};
     const el = document.getElementById('dailyChart');
     if (window.Chart && el) {
+      const ctx = el.getContext('2d');
+      
+      const gradient1 = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient1.addColorStop(0, 'rgba(251, 191, 36, 0.3)');
+      gradient1.addColorStop(1, 'rgba(251, 191, 36, 0)');
+      
+      const gradient2 = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient2.addColorStop(0, 'rgba(16, 185, 129, 0.3)');
+      gradient2.addColorStop(1, 'rgba(16, 185, 129, 0)');
+      
+      const gradient3 = ctx.createLinearGradient(0, 0, 0, 400);
+      gradient3.addColorStop(0, 'rgba(167, 139, 250, 0.3)');
+      gradient3.addColorStop(1, 'rgba(167, 139, 250, 0)');
+
       new Chart(el, {
         type: 'line',
         data: {
           labels: data.labels,
           datasets: [
-            { label: 'Utility kWh/day', data: data.utility_kwh },
-            { label: 'Generator kWh/day', data: data.generator_kwh },
-            { label: 'Tenant kWh/day', data: data.tenant_kwh },
+            { 
+              label: 'Utility Grid',
+              data: data.utility_kwh,
+              borderColor: '#fbbf24',
+              backgroundColor: gradient1,
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 6,
+              pointHoverRadius: 9,
+              pointBackgroundColor: '#fbbf24',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 3,
+              pointHoverBackgroundColor: '#fcd34d',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 3
+            },
+            { 
+              label: 'Generator Backup',
+              data: data.generator_kwh,
+              borderColor: '#10b981',
+              backgroundColor: gradient2,
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 6,
+              pointHoverRadius: 9,
+              pointBackgroundColor: '#10b981',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 3,
+              pointHoverBackgroundColor: '#34d399',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 3
+            },
+            { 
+              label: 'Tenant Consumption',
+              data: data.tenant_kwh,
+              borderColor: '#a78bfa',
+              backgroundColor: gradient3,
+              borderWidth: 3,
+              tension: 0.4,
+              fill: true,
+              pointRadius: 6,
+              pointHoverRadius: 9,
+              pointBackgroundColor: '#a78bfa',
+              pointBorderColor: '#fff',
+              pointBorderWidth: 3,
+              pointHoverBackgroundColor: '#c4b5fd',
+              pointHoverBorderColor: '#fff',
+              pointHoverBorderWidth: 3
+            },
           ]
         },
         options: {
           responsive: true,
-          plugins: { legend: { position: 'bottom' } },
-          scales: { y: { beginAtZero: true } }
+          maintainAspectRatio: false,
+          plugins: { 
+            legend: { 
+              position: 'top',
+              labels: {
+                color: '#cbd5e1',
+                font: {
+                  size: 14,
+                  family: 'Inter',
+                  weight: '600'
+                },
+                padding: 20,
+                usePointStyle: true,
+                pointStyle: 'circle'
+              }
+            },
+            tooltip: {
+              backgroundColor: 'rgba(10, 13, 20, 0.95)',
+              titleColor: '#ffffff',
+              bodyColor: '#cbd5e1',
+              borderColor: 'rgba(6, 182, 212, 0.5)',
+              borderWidth: 2,
+              padding: 16,
+              displayColors: true,
+              titleFont: {
+                size: 14,
+                family: 'Inter',
+                weight: '700'
+              },
+              bodyFont: {
+                size: 13,
+                family: 'Inter',
+                weight: '600'
+              },
+              callbacks: {
+                label: function(context) {
+                  return context.dataset.label + ': ' + context.parsed.y.toFixed(3) + ' kWh';
+                }
+              }
+            }
+          },
+          scales: { 
+            y: { 
+              beginAtZero: true,
+              grid: {
+                color: 'rgba(255, 255, 255, 0.06)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#94a3b8',
+                font: {
+                  size: 12,
+                  family: 'Inter',
+                  weight: '600'
+                },
+                callback: function(value) {
+                  return value + ' kWh';
+                },
+                padding: 10
+              }
+            },
+            x: {
+              grid: {
+                color: 'rgba(255, 255, 255, 0.06)',
+                drawBorder: false
+              },
+              ticks: {
+                color: '#94a3b8',
+                font: {
+                  size: 12,
+                  family: 'Inter',
+                  weight: '600'
+                },
+                padding: 10
+              }
+            }
+          },
+          interaction: {
+            intersect: false,
+            mode: 'index'
+          }
         }
       });
     }
