@@ -1,0 +1,64 @@
+# Energy gateway configuration (Raspberry Pi 5)
+# Copy to /etc/energy-gateway/config.yaml and edit.
+
+gateway:
+  id: pi5-mall-01                 # unique per Pi; also the MQTT username
+  site: kigali-mall               # used in MQTT topics and the database
+  buffer_path: /var/lib/energy-gateway/buffer.db
+  poll_fast_s: 10                 # V, A, kW, PF, Hz
+  poll_slow_s: 60                 # cumulative kWh, generator run time
+  offline_after_failures: 3       # consecutive failed cycles before a device is "offline"
+  heartbeat_s: 300
+
+source:
+  ats_gpio: 17                    # BCM pin wired to the ATS aux contact via an optocoupler; null = no ATS input
+  ats_closed_means: GENERATOR     # what a CLOSED contact means on your ATS (check with the electrician)
+  grid_v_min: 180                 # below this the grid counts as down (Rwanda nominal: 230 V / 50 Hz)
+  gen_kw_min: 0.5                 # generator output above this = generator is supplying
+  debounce_s: 3
+
+mqtt:
+  host: mqtt.example.rw
+  port: 8883
+  tls: true
+  ca_file: /etc/energy-gateway/ca.crt
+  username: pi5-mall-01
+  password_file: /etc/energy-gateway/mqtt.pass
+  topic_prefix: kigali
+
+# One entry per USB-RS485 adapter. Use /dev/serial/by-id/... so names survive reboots.
+buses:
+  - name: plant
+    port: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_PLANT-if00-port0
+    baudrate: 9600
+    parity: N
+    stopbits: 1
+  - name: floor0
+    port: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_FLOOR0-if00-port0
+    baudrate: 9600
+    parity: N
+    stopbits: 1
+  - name: floor1
+    port: /dev/serial/by-id/usb-FTDI_FT232R_USB_UART_FLOOR1-if00-port0
+    baudrate: 9600
+    parity: N
+    stopbits: 1
+
+# role: main | generator_meter | genset | shop
+# Shop details (tenant, area, contracted kW) are sent to the server at start-up
+# so the dashboard and billing know about every meter.
+devices:
+  - {id: main-incomer, bus: plant, unit: 1, model: sdm630, role: main, name: "Main incomer (REG/EUCL)"}
+  - {id: gen-meter,    bus: plant, unit: 2, model: sdm630, role: generator_meter, name: "Generator output"}
+  - {id: genset,       bus: plant, unit: 3, model: dse_gencomm, role: genset, name: "Generator 150 kVA", tank_litres: 500}
+
+  - {id: shop-G01, bus: floor0, unit: 11, model: sdm120, role: shop, name: "G01 Pharmacy",        floor: 0, area_m2: 40,  contracted_kw: 5}
+  - {id: shop-G02, bus: floor0, unit: 12, model: sdm120, role: shop, name: "G02 Phone shop",      floor: 0, area_m2: 25,  contracted_kw: 3}
+  - {id: shop-G03, bus: floor0, unit: 13, model: sdm630, role: shop, name: "G03 Supermarket",     floor: 0, area_m2: 320, contracted_kw: 40}
+  - {id: shop-G04, bus: floor0, unit: 14, model: sdm120, role: shop, name: "G04 Coffee shop",     floor: 0, area_m2: 60,  contracted_kw: 8}
+  - {id: shop-G05, bus: floor0, unit: 15, model: sdm120, role: shop, name: "G05 Forex bureau",    floor: 0, area_m2: 20,  contracted_kw: 3}
+  - {id: shop-101, bus: floor1, unit: 101, model: sdm120, role: shop, name: "101 Boutique",        floor: 1, area_m2: 45,  contracted_kw: 4}
+  - {id: shop-102, bus: floor1, unit: 102, model: sdm120, role: shop, name: "102 Salon",           floor: 1, area_m2: 50,  contracted_kw: 9}
+  - {id: shop-103, bus: floor1, unit: 103, model: sdm630, role: shop, name: "103 Restaurant",      floor: 1, area_m2: 180, contracted_kw: 30}
+  - {id: shop-104, bus: floor1, unit: 104, model: sdm120, role: shop, name: "104 Electronics",     floor: 1, area_m2: 70,  contracted_kw: 6}
+  - {id: shop-105, bus: floor1, unit: 105, model: sdm120, role: shop, name: "105 Bookshop",        floor: 1, area_m2: 35,  contracted_kw: 3}
