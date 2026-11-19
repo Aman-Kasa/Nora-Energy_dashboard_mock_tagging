@@ -1,0 +1,26 @@
+[Unit]
+Description=Kigali building energy gateway (RS485/Modbus -> MQTT)
+After=network-online.target time-sync.target
+Wants=network-online.target
+
+[Service]
+Type=notify
+NotifyAccess=main
+User=energy
+Group=energy
+SupplementaryGroups=dialout gpio
+WorkingDirectory=/opt/energy-gateway
+ExecStart=/opt/energy-gateway/venv/bin/python /opt/energy-gateway/main.py --config /etc/energy-gateway/config.yaml
+Restart=always
+RestartSec=5
+# The gateway pings systemd every poll cycle; if it hangs for 60 s it is restarted.
+WatchdogSec=60
+# Hardening
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/energy-gateway
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target
