@@ -1,0 +1,26 @@
+# Tariffs used by the billing job. Update when RURA changes prices.
+
+# Rwanda non-residential electricity tariff, RWF/kWh, VAT exclusive,
+# effective 1 October 2025 (REG / RURA). The building is one EUCL customer,
+# so the blocks apply to the main meter's monthly kWh.
+# Source: https://www.reg.rw/fileadmin/user_upload/New_Tariff_effective_from_1st_October_2025.pdf
+grid_blocks:
+  - {upto: 100,  rate: 355}
+  - {upto: null, rate: 376}
+vat: 0.18
+
+# Diesel maximum pump price in Kigali, RWF/litre (RURA, from 5 June 2026). Check before each run.
+diesel_rwf_per_litre: 2927
+
+# Used only when real fuel litres are not known.
+gen_kwh_per_litre: 3.3
+
+# Generator service contract + wear, spread per run hour.
+# EXAMPLE VALUE ONLY: replace with the real figure agreed with the landlord.
+gen_maintenance_rwf_per_hour: 6000
+
+# How common-area and loss energy is shared: area | kwh | equal
+common_split: area
+
+# Landlord admin margin on energy, in percent (0 = pass-through at cost).
+landlord_margin_pct: 0
