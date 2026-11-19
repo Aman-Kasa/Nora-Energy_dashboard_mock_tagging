@@ -1,0 +1,742 @@
+{
+  "uid": "kigali-building-energy",
+  "title": "Building energy: grid, generator and shops",
+  "tags": [
+    "energy",
+    "kigali"
+  ],
+  "timezone": "Africa/Kigali",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "30s",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "templating": {
+    "list": [
+      {
+        "name": "shop",
+        "label": "Shop",
+        "type": "query",
+        "datasource": {
+          "type": "grafana-postgresql-datasource",
+          "uid": "energy-db"
+        },
+        "query": "SELECT name AS __text, device_id AS __value FROM devices WHERE role = 'shop' ORDER BY name",
+        "definition": "SELECT name AS __text, device_id AS __value FROM devices WHERE role = 'shop' ORDER BY name",
+        "multi": true,
+        "includeAll": true,
+        "current": {
+          "text": "All",
+          "value": "$__all"
+        },
+        "refresh": 1
+      }
+    ]
+  },
+  "panels": [
+    {
+      "id": 1,
+      "type": "stat",
+      "title": "Building is on",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT data->>'new' AS source FROM events WHERE type = 'source_change' ORDER BY ts DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "none",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "GRID": {
+                  "text": "GRID (REG)",
+                  "color": "green"
+                },
+                "GENERATOR": {
+                  "text": "GENERATOR",
+                  "color": "orange"
+                },
+                "NONE": {
+                  "text": "NO POWER",
+                  "color": "red"
+                }
+              }
+            }
+          ],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 2,
+      "type": "stat",
+      "title": "Shops load now",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(sum(p_kw), 0) AS kw FROM latest_readings WHERE role = 'shop' AND ts > now() - interval '2 minutes'",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 3,
+      "type": "stat",
+      "title": "Generator fuel",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT (m->>'fuel_pct')::float AS fuel FROM readings r JOIN devices d USING (device_id)\nWHERE d.role = 'genset' AND m ? 'fuel_pct' ORDER BY ts DESC LIMIT 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 20
+              },
+              {
+                "color": "green",
+                "value": 40
+              }
+            ]
+          },
+          "decimals": 0
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "Generator hours this month",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 4
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT coalesce(sum(extract(epoch FROM (least(coalesce(ended, now()), now()) - greatest(started, date_trunc('month', now() AT TIME ZONE 'Africa/Kigali') AT TIME ZONE 'Africa/Kigali')))), 0) / 3600 AS h\nFROM source_periods WHERE source = 'GENERATOR' AND coalesce(ended, now()) > date_trunc('month', now() AT TIME ZONE 'Africa/Kigali') AT TIME ZONE 'Africa/Kigali'",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "h",
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "blue",
+                "value": null
+              }
+            ]
+          },
+          "decimals": 1
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      }
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Building supply: grid vs generator (kW)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 4,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '1m'),\n       CASE d.role WHEN 'main' THEN 'Grid (REG)' ELSE 'Generator' END AS metric,\n       avg(p_kw) AS kw\nFROM readings r JOIN devices d USING (device_id)\nWHERE $__timeFilter(ts) AND d.role IN ('main', 'generator_meter')\nGROUP BY 1, 2 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt",
+          "custom": {
+            "fillOpacity": 25,
+            "lineWidth": 1,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Grid (REG)"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Generator"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "type": "table",
+      "title": "Shops right now",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 12,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT name AS \"Shop\", round(p_kw::numeric, 2) AS \"kW\",\n       round((100 * p_kw / nullif(contracted_kw, 0))::numeric, 0) AS \"% of contract\",\n       round(v::numeric, 0) AS \"V\", round(i::numeric, 1) AS \"A\", round(pf::numeric, 2) AS \"PF\",\n       source AS \"Source\", ts AS \"Last reading\"\nFROM latest_readings WHERE role = 'shop' ORDER BY name",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "% of contract"
+            },
+            "properties": [
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-background"
+                }
+              },
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 80
+                    },
+                    {
+                      "color": "red",
+                      "value": 100
+                    }
+                  ]
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Source"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "GRID": {
+                        "text": "GRID (REG)",
+                        "color": "green"
+                      },
+                      "GENERATOR": {
+                        "text": "GENERATOR",
+                        "color": "orange"
+                      },
+                      "NONE": {
+                        "text": "NO POWER",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "type": "table",
+      "title": "Month to date per shop (estimate, RWF)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 12,
+        "w": 12,
+        "h": 10
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT d.name AS \"Shop\",\n       round(coalesce(sum(e.kwh) FILTER (WHERE e.source = 'GRID'), 0)::numeric, 1) AS \"Grid kWh\",\n       round(coalesce(sum(e.kwh) FILTER (WHERE e.source = 'GENERATOR'), 0)::numeric, 1) AS \"Generator kWh\",\n       round(coalesce(sum(e.kwh) FILTER (WHERE e.source = 'GRID'), 0) * coalesce((SELECT (summary->>'grid_rwf_per_kwh')::numeric FROM billing_runs ORDER BY run_at DESC LIMIT 1), 444)\n           + coalesce(sum(e.kwh) FILTER (WHERE e.source = 'GENERATOR'), 0) * coalesce((SELECT (summary->>'gen_rwf_per_kwh')::numeric FROM billing_runs ORDER BY run_at DESC LIMIT 1), 890)) AS \"Est. RWF (excl. common)\"\nFROM devices d LEFT JOIN energy_hourly e ON e.device_id = d.device_id AND e.bucket >= date_trunc('month', now() AT TIME ZONE 'Africa/Kigali') AT TIME ZONE 'Africa/Kigali'\nWHERE d.role = 'shop' GROUP BY d.name ORDER BY 4 DESC",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Est. RWF (excl. common)"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "locale"
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "type": "barchart",
+      "title": "Daily energy by source (kWh, all shops)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT to_char(time_bucket('1 day', bucket, 'Africa/Kigali'), 'MM-DD') AS day,\n       round(coalesce(sum(kwh) FILTER (WHERE source = 'GRID'), 0)::numeric, 1) AS \"Grid\",\n       round(coalesce(sum(kwh) FILTER (WHERE source = 'GENERATOR'), 0)::numeric, 1) AS \"Generator\"\nFROM energy_hourly e JOIN devices d USING (device_id)\nWHERE d.role = 'shop' AND $__timeFilter(bucket)\nGROUP BY 1 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "options": {
+        "stacking": "normal",
+        "xField": "day",
+        "showValue": "never"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatth"
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Grid"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "green"
+                }
+              }
+            ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Generator"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "orange"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "type": "timeseries",
+      "title": "Power per shop (kW)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 30,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT $__timeGroupAlias(ts, '1m'), d.name AS metric, avg(p_kw) AS kw\nFROM readings r JOIN devices d USING (device_id)\nWHERE $__timeFilter(ts) AND d.device_id IN ($shop)\nGROUP BY 1, 2 ORDER BY 1",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {
+          "unit": "kwatt"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 10,
+      "type": "table",
+      "title": "Outages and generator runs",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 38,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT started AS \"Start\", ended AS \"End\", source AS \"Supply\",\n       to_char(duration, 'HH24:MI:SS') AS \"Duration\"\nFROM source_periods WHERE source <> 'GRID' AND $__timeFilter(started)\nORDER BY started DESC",
+          "refId": "A"
+        }
+      ],
+      "fieldConfig": {
+        "defaults": {},
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Supply"
+            },
+            "properties": [
+              {
+                "id": "mappings",
+                "value": [
+                  {
+                    "type": "value",
+                    "options": {
+                      "GRID": {
+                        "text": "GRID (REG)",
+                        "color": "green"
+                      },
+                      "GENERATOR": {
+                        "text": "GENERATOR",
+                        "color": "orange"
+                      },
+                      "NONE": {
+                        "text": "NO POWER",
+                        "color": "red"
+                      }
+                    }
+                  }
+                ]
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "type": "table",
+      "title": "Night use, last night 23:00-05:00 (kWh)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 38,
+        "w": 12,
+        "h": 9
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "WITH win AS (\n  SELECT (date_trunc('day', now() AT TIME ZONE 'Africa/Kigali') - interval '1 hour') AT TIME ZONE 'Africa/Kigali' AS s,\n         (date_trunc('day', now() AT TIME ZONE 'Africa/Kigali') + interval '5 hour') AT TIME ZONE 'Africa/Kigali' AS e)\nSELECT d.name AS \"Shop\", round(coalesce(sum(r.d_kwh), 0)::numeric, 2) AS \"kWh\",\n       round(coalesce(avg(r.p_kw), 0)::numeric, 2) AS \"Avg kW\"\nFROM devices d LEFT JOIN readings r ON r.device_id = d.device_id\n  AND r.ts >= (SELECT s FROM win) AND r.ts < (SELECT e FROM win)\nWHERE d.role = 'shop' GROUP BY d.name ORDER BY 2 DESC",
+          "refId": "A"
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "type": "table",
+      "title": "Device and gateway events (last 7 days)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "energy-db"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 47,
+        "w": 24,
+        "h": 8
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "energy-db"
+          },
+          "editorMode": "code",
+          "format": "table",
+          "rawQuery": true,
+          "rawSql": "SELECT ts AS \"Time\", gateway AS \"Gateway\", type AS \"Event\",\n       coalesce(data->>'dev', data->>'new', '') AS \"Device / supply\", data::text AS \"Details\"\nFROM events WHERE type IN ('device_offline', 'device_online', 'source_change')\n  AND ts > now() - interval '7 days' ORDER BY ts DESC LIMIT 200",
+          "refId": "A"
+        }
+      ]
+    }
+  ]
+}
