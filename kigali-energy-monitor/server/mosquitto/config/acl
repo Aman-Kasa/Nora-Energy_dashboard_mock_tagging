@@ -1,0 +1,7 @@
+# The ingest service reads everything under kigali/
+user ingest
+topic read kigali/#
+
+# Each gateway (MQTT username = gateway id) may only publish under its own id:
+#   kigali/<site>/<gateway-id>/readings | events | status
+pattern write kigali/+/%u/#

@@ -1,0 +1,84 @@
+# Server side of the Kigali building energy monitor.
+#   cp .env.example .env   (set real passwords)
+#   ./scripts/make-certs.sh mqtt.example.rw
+#   ./scripts/add-mqtt-user.sh ingest "$MQTT_INGEST_PASSWORD"
+#   ./scripts/add-mqtt-user.sh pi5-mall-01 '<gateway password>'
+#   docker compose up -d
+services:
+  db:
+    image: timescale/timescaledb:latest-pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: energy
+      POSTGRES_USER: energy
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+    volumes:
+      - dbdata:/var/lib/postgresql/data
+      - ./db:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U energy -d energy"]
+      interval: 10s
+      retries: 10
+    # not published: only reachable inside the compose network
+
+  mosquitto:
+    image: eclipse-mosquitto:2
+    restart: unless-stopped
+    ports:
+      - "8883:8883"            # TLS, for gateways
+    volumes:
+      - ./mosquitto/config:/mosquitto/config
+      - ./mosquitto/certs:/mosquitto/certs:ro
+      - mqttdata:/mosquitto/data
+
+  ingest:
+    build: ./app
+    restart: unless-stopped
+    command: ["python", "ingest.py"]
+    depends_on:
+      db: {condition: service_healthy}
+      mosquitto: {condition: service_started}
+    environment:
+      DATABASE_URL: postgresql://energy:${POSTGRES_PASSWORD}@db:5432/energy
+      MQTT_HOST: mosquitto
+      MQTT_PORT: "1883"        # internal plain listener, not published outside docker
+      MQTT_USER: ingest
+      MQTT_PASSWORD: ${MQTT_INGEST_PASSWORD}
+
+  billing:
+    build: ./app
+    profiles: ["tools"]        # run on demand: docker compose run --rm billing --site ... --month ...
+    entrypoint: ["python", "billing.py"]
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      DATABASE_URL: postgresql://energy:${POSTGRES_PASSWORD}@db:5432/energy
+      BILL_DIR: /bills
+    volumes:
+      - ./bills:/bills
+      - ./app/tariffs.yaml:/app/tariffs.yaml:ro
+
+  grafana:
+    image: grafana/grafana-oss:11.3.0
+    restart: unless-stopped
+    ports:
+      - "3000:3000"            # put behind a reverse proxy with HTTPS, or reach it over the VPN
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD}
+      GF_USERS_ALLOW_SIGN_UP: "false"
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
+      GF_DATE_FORMATS_DEFAULT_TIMEZONE: Africa/Kigali
+      GF_LOG_LEVEL: info
+      GRAFANA_DB_PASSWORD: ${GRAFANA_DB_PASSWORD}
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafanadata:/var/lib/grafana
+
+volumes:
+  dbdata:
+  mqttdata:
+  grafanadata:
